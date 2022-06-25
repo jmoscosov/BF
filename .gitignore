@@ -1,9 +1,0 @@
-obj
-bin
-Debug
-Release
-/.vs
-/packages
-/ipch
-/*.db
-/*.opendb
