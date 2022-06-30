@@ -5,7 +5,7 @@ namespace BF_EncryptedPAN
 {
     internal static class Logger
     {
-        private const string LOG_FILENAME = @"C:\LOGS\SendCountersBF.LOG";
+        private const string LOG_FILENAME = @"C:\LOGS\BF_EncriptedPAN.LOG";
 
         internal static void Log(string text)
         {
