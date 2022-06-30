@@ -95,43 +95,11 @@ namespace BF_EncryptedPAN
                 return false;
 
             var arr = message.Split((char)NDCMessage.FS);
-            Logger.Log($"ARR Value: {arr[0]}");
 
             if (arr != null)
             {
                 Logger.Log($"ARR <> NULL");
-                /* Se verifica si el mensaje es Enhanced Configuration Parameters Load
-                 * para cambiar el Option 45 habilitando reciclado */
-                if (arr.Length > 5 && arr[0].StartsWith("3") && arr[3].Equals("1A"))
-                {
-                    //Logger.Log("Message is Enhanced Configuration Parameters Load");
-
-                    /*  if (ChangeConfigurationParameters(ref arr[5]))
-                      {
-                          message = ReassembleMessage(arr);
-
-                          return true;
-                      }
-                    */
-                }
-
-                /* Se verifica si el mensaje es carga de estados para cambiar el estado 'l'
-                 * de Passbook por un estado 'A' normal */
-                if (arr.Length > 4 && arr[0].StartsWith("3") && arr[3].Equals("12"))
-                {
-                    // Logger.Log($"Message is State Table Load: {arr[4]}");
-
-                    /*   if (ChangeStateData(ref arr[4]))
-                       {
-                           message = ReassembleMessage(arr);
-
-                           return true;
-                       }
-                    */
-                }
-
-                /* Si el mensaje es un Transaction Request, se cambian los índices del template
-                 * para el depósito. Adicionalmente, se corta el estado de la última transacción. */
+                
                 if (arr.Length > 0 && arr[0].StartsWith("11"))
                 {
                     Logger.Log($"JM185384 - Track2 Data origin : {arr[5]}");
@@ -141,113 +109,10 @@ namespace BF_EncryptedPAN
 
                         return true;
                     }
-                    // NDCMessage.PutIntValUCDI("ucdiTx", 1);
-                    /*  NDCMessage.PutIntValUCDI("ByPassUCDI", 1);
-                      Logger.Log($"JM185384 - Message is Transaction Request {arr[0]}");
-                      // Call Thread 
-                      Thread th1 = new Thread(new ThreadStart(statusMessage.send));
-                      th1.Start();
-                    */
-                    //var changed = false;
-
-                    /*if (ChangeNoteTypes(ref arr))
-                    {
-                        message = ReassembleMessage(arr);
-
-                        changed |= true;
-                    }*/
-
-                    //if (ChangeLastTxStatusMaxLength(ref arr))
-                    //{
-                    //    message = ReassembleMessage(arr);
-
-                    //    changed |= true;
-                    //}
 
                     return true;
                 }
-                if (arr.Length > 0 && arr[0].StartsWith("4"))
-                {
-
-
-                    Logger.Log($"JM185384 Message is Transaction Reply {arr[0]}");
-                    Logger.Log($"JM185384 Message is Transaction Reply FID :  {arr[5].Substring(4, 1)}");
-                    if (arr[5].Substring(4, 1) == "2" || arr[5].Substring(4, 1) == "8")
-                    {
-                        // Is a valid function id dispensed
-                        NDCMessage.PutIntValUCDI("sendCountersUCDI", 1);
-                        Logger.Log($"JM185384 sendCountersUCDI : {NDCMessage.GetIntValUCDI("sendCountersUCDI")}");
-                        Logger.Log($"JM185384 !!MessageIn is TX reply and Function ID 2 or 8");
-
-                        //Thread th2 = new Thread(new ThreadStart(statusMessage2.SendCountersToHost)); v2
-                        //th2.Start(); v2
-                    }
-                    // Call Thread 
-                    //statusMessage2.SendCountersToHost();
-                    /*                   Thread thread = new Thread(() => statusMessage.SendCountersToHost(sCounters));
-                                       thread.Start();
-                                       thread.Join();
-                    */
-                    /*
-                                        Thread th2 = new Thread(new ThreadStart(statusMessage.SendCountersToHost(sCounters)));
-                                        th2.Start();
-                    */
-                    return true;
-                }
-                if (arr.Length > 0 && arr[0].Equals("22") && arr[3].Equals("B"))
-                {
-                    Logger.Log("JM185384  - Ready B Message captured");
-                    // Logger.Log("Message is Send Configuration Information - Send hardware configuration data only");
-
-                    if (AddCountersToReady(ref arr))
-                    {
-                        message = ReassembleMessage(arr);
-
-                        return true;
-                    }
-
-                }
-
-                if (arr.Length > 4 && arr[0].Equals("22") && arr[3].Equals("F") && arr[4].StartsWith("IA"))
-                {
-                    /* Logger.Log("Send Configuration Information - Send supplies data only");
-
-                     if (ChangeSuppliesData(ref arr))
-                     {
-                         message = ReassembleMessage(arr);
-
-                         return true;
-                     }
-                    */
-                }
-
-                if (arr.Length > 4 && arr[0].Equals("22") && arr[3].Equals("F") && arr[4].StartsWith("JA"))
-                {
-                    /* Logger.Log("Message is Send Configuration Information - Send fitness data only");
-
-                     if (ChangeFitnessData(ref arr))
-                     {
-                         message = ReassembleMessage(arr);
-
-                         return true;
-                     }
-                    */
-                }
-
-                // ELIMINA LOS STATUS DEL MENSAJE NO SOLICITADO
-                // Y CAMBIA LA POSICION DE LAS DENOMINACIONES DEL TEMPLATE
-                if (arr.Length > 4 && arr[0].Equals("12") && arr[3].StartsWith("w"))
-                {
-                    /* Logger.Log("Unsolicited Message with fitness data - send forced device status to OK");
-
-                     if (ChangeUnsolicitedFitnessData(ref arr))
-                     {
-                         message = ReassembleMessage(arr);
-
-                         return true;
-                     }
-                    */
-                }
+                
             }
             else
             {
