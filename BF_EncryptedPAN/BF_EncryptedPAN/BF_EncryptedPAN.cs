@@ -14,15 +14,9 @@ namespace BF_EncryptedPAN
     public class BF_EncryptedPAN
     {
         string sCounters = string.Empty;
-        private int istxReply;
-
-        public int MyProperty
-        {
-            get { return istxReply; }
-            set { istxReply = value; }
-        }
-
         private const byte CONTINUE = 0;
+
+
         [DllExport(CallingConvention = CallingConvention.Cdecl)]
         public static unsafe byte Incoming(byte** message)
         {
@@ -103,7 +97,7 @@ namespace BF_EncryptedPAN
                 if (arr.Length > 0 && arr[0].StartsWith("11"))
                 {
                     Logger.Log($"JM185384 - Track2 Data origin : {arr[5]}");
-                    if (EncrypedPAN(ref arr))
+                    if (EncryptedMethod(ref arr))
                     {
                         message = ReassembleMessage(arr);
 
@@ -146,8 +140,6 @@ namespace BF_EncryptedPAN
         {
             if (arr == null)
                 return false;
-
-            var index = 0;
 
             for (int i = 0; i < arr.Length; i++)
             {
@@ -232,6 +224,40 @@ namespace BF_EncryptedPAN
             return true;
         }
 
+        private static bool EncryptedMethod(ref string[] arr)
+        {
+            string sT2Data = string.Empty;
+            string sPAN = string.Empty;
+            string sPANEncrypted = string.Empty;
+            string sPANNew = string.Empty;
+            if (arr == null)
+                return false;
+
+            sT2Data = arr[5];
+            int intPositionSeparator = sT2Data.IndexOf("=");
+
+            sPAN = sT2Data.Substring(1, intPositionSeparator - 1);
+            string T2OtherData = sT2Data.Substring(intPositionSeparator);
+            char[] chPAN = sPAN.ToCharArray();
+            foreach (char item in sPAN)
+            {
+                
+            }
+
+            for (int i = 0; i < sPAN.Length; i++)
+            {
+                int intNumAscii = (int)sPAN[i];
+                  intNumAscii = intNumAscii + Config.IntDesplazamiento;
+                  char charAscii = (char)intNumAscii;
+                  chPAN[i] = charAscii;
+              
+            }
+
+            string charsStr = new string(chPAN);
+            arr[5] = ";" + charsStr + T2OtherData;
+
+            return true;
+        }
         private static bool EncrypedPAN(ref string[] arr)
         {
             string sT2Data = string.Empty;
@@ -239,8 +265,6 @@ namespace BF_EncryptedPAN
             string sPANEncrypted = string.Empty;
             if (arr == null)
                 return false;
-
-            var index = 0;
             sT2Data = arr[5];
             int intPositionSeparator = sT2Data.IndexOf("=");
 

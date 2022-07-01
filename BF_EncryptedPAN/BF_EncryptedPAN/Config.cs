@@ -7,7 +7,7 @@ namespace BF_EncryptedPAN
     public static class Config
     {
         private const string CONFIG_FILE_NAME = @"C:\Recycler.xml";
-
+        public const int IntDesplazamiento = 2;
         public static int NoteCountLength { set; get; } = 2;
         //public static int LastTxStatusMaxLength { set; get; } = 26;
 
