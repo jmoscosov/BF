@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace ByPass
+namespace BF_ChangeCountersDetected
 {
     public abstract class NDCMessage
     {
@@ -30,11 +30,9 @@ namespace ByPass
         [DllImport("ssdsNDCDATA.DLL", EntryPoint = "?PutIntVal@@YAXPBDJ@Z", CallingConvention = CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Ansi)]
         public static extern void PutIntValUCDI([MarshalAs(UnmanagedType.LPStr)] string name, int value);
 
-        [DllImport("ssdsNDCDATA.DLL", EntryPoint = "?PutStringVal@@YAXJPAD@Z", CallingConvention = CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Ansi)]
-        public static extern void PutStringVal(int index, IntPtr pchMessage);
+        [DllImport("ssdsNDCDATA.DLL", EntryPoint = "?GetStringVal@@YAPADJ@Z", CallingConvention = CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Ansi)]
+        public static extern string GetStringVal([MarshalAs(UnmanagedType.LPStr)] string name);
 
-        [DllImport("ssdsNDCDATA.DLL", EntryPoint = "?PutIntVal@@YAXPBDJ@Z", CallingConvention = CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Ansi)]
-        public static extern void PutIntVal(int index, int val);
         public byte[] Data { set; get; }
 
         protected unsafe byte ReadByte(byte** ptr)
@@ -94,7 +92,7 @@ namespace ByPass
             }
             catch (Exception ex)
             {
-                Logger.Log($"Error allocating memory with AANDC: {ex.Message}");
+                LoggerClass.Log($"Error allocating memory with AANDC: {ex.Message}");
 
                 return Marshal.AllocCoTaskMem((int)length);
             }
@@ -107,7 +105,7 @@ namespace ByPass
             }
             catch (Exception ex)
             {
-                Logger.Log($"Error freeing memory with AANDC: {ex.Message}");
+                LoggerClass.Log($"Error freeing memory with AANDC: {ex.Message}");
 
                 Marshal.FreeCoTaskMem(ptr);
             }

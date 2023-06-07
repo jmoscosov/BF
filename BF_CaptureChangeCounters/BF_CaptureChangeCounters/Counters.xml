@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Config>
+	<NoteTypes>
+		<Type ID="01">03</Type>
+		<Type ID="02">04</Type>
+		<Type ID="03">05</Type>
+		<Type ID="04">06</Type>
+	</NoteTypes>
+</Config>

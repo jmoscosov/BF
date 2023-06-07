@@ -30,11 +30,6 @@ namespace ByPass
         [DllImport("ssdsNDCDATA.DLL", EntryPoint = "?PutIntVal@@YAXPBDJ@Z", CallingConvention = CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Ansi)]
         public static extern void PutIntValUCDI([MarshalAs(UnmanagedType.LPStr)] string name, int value);
 
-        [DllImport("ssdsNDCDATA.DLL", EntryPoint = "?PutStringVal@@YAXJPAD@Z", CallingConvention = CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Ansi)]
-        public static extern void PutStringVal(int index, IntPtr pchMessage);
-
-        [DllImport("ssdsNDCDATA.DLL", EntryPoint = "?PutIntVal@@YAXPBDJ@Z", CallingConvention = CallingConvention.StdCall, SetLastError = true, CharSet = CharSet.Ansi)]
-        public static extern void PutIntVal(int index, int val);
         public byte[] Data { set; get; }
 
         protected unsafe byte ReadByte(byte** ptr)

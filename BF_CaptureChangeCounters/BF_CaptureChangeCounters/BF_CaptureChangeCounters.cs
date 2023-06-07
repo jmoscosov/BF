@@ -6,10 +6,13 @@ using System.Text;
 using System.Xml;
 using System.Threading;
 using Microsoft.Win32;
+using AANDC_CL;
+using BF_CaptureChangeCounters;
+using System.Linq;
 
-namespace ByPass
+namespace BF_CaptureChangeCounters
     {
-    public class SendCountersBF
+    public class BF_CaptureChangeCounters
     {
         string sCounters = string.Empty;
         private int istxReply;
@@ -84,8 +87,9 @@ namespace ByPass
 
         public static bool ProcessMessage(ref string message)
         {
-           // SendStatusNotSolicited statusMessage = new SendStatusNotSolicited();
+            // SendStatusNotSolicited statusMessage = new SendStatusNotSolicited();
             //SendStatusNotSolicited statusMessage2 = new SendStatusNotSolicited();
+            SendStatusNotSolicited statusMessage = new SendStatusNotSolicited();
             string sCounters = string.Empty;
             
             Logger.Log($"ProcessMessage function entry : {message} ");
@@ -95,106 +99,17 @@ namespace ByPass
             var arr = message.Split((char)NDCMessage.FS);
             Logger.Log($"ARR Value: {arr[0]}");
 
-            //bool resp = ChangeSuppliesCounters();
-
-
-
             if (arr != null)
             {
                 Logger.Log($"ARR <> NULL");
-                /* Se verifica si el mensaje es Enhanced Configuration Parameters Load
-                 * para cambiar el Option 45 habilitando reciclado */
-                if (arr.Length > 5 && arr[0].StartsWith("3") && arr[3].Equals("1A"))
+
+
+               if (arr.Length > 0 && arr[0].Equals("12") && arr[3].Equals("P21")) 
                 {
-                    //Logger.Log("Message is Enhanced Configuration Parameters Load");
-
-                  /*  if (ChangeConfigurationParameters(ref arr[5]))
-                    {
-                        message = ReassembleMessage(arr);
-
-                        return true;
-                    }
-                  */
-                }
-
-                /* Se verifica si el mensaje es carga de estados para cambiar el estado 'l'
-                 * de Passbook por un estado 'A' normal */
-                if (arr.Length > 4 && arr[0].StartsWith("3") && arr[3].Equals("12"))
-                {
-                   // Logger.Log($"Message is State Table Load: {arr[4]}");
-
-                 /*   if (ChangeStateData(ref arr[4]))
-                    {
-                        message = ReassembleMessage(arr);
-
-                        return true;
-                    }
-                 */
-                }
-
-                /* Si el mensaje es un Transaction Request, se cambian los índices del template
-                 * para el depósito. Adicionalmente, se corta el estado de la última transacción. */
-                if (arr.Length > 0 && arr[0].StartsWith("11"))
-                {
-                    // NDCMessage.PutIntValUCDI("ucdiTx", 1);
-                  /*  NDCMessage.PutIntValUCDI("ByPassUCDI", 1);
-                    Logger.Log($"JM185384 - Message is Transaction Request {arr[0]}");
-                    // Call Thread 
-                    Thread th1 = new Thread(new ThreadStart(statusMessage.send));
-                    th1.Start();
-                  */
-                    //var changed = false;
-
-                    /*if (ChangeNoteTypes(ref arr))
-                    {
-                        message = ReassembleMessage(arr);
-
-                        changed |= true;
-                    }*/
-
-                    //if (ChangeLastTxStatusMaxLength(ref arr))
-                    //{
-                    //    message = ReassembleMessage(arr);
-
-                    //    changed |= true;
-                    //}
-
-                    return true;
-                }
-                if (arr.Length > 0 && arr[0].StartsWith("4"))
-                {
-
-                   
-                    Logger.Log($"JM185384 Message is Transaction Reply {arr[0]}");
-                    Logger.Log($"JM185384 Message is Transaction Reply FID :  {arr[5].Substring(4,1)}");
-                    if (arr[5].Substring(4, 1) == "2"  || arr[5].Substring(4, 1) == "8")
-                    {
-                        // Is a valid function id dispensed
-                        NDCMessage.PutIntValUCDI("sendCountersUCDI", 1);
-                        Logger.Log($"JM185384 sendCountersUCDI : {NDCMessage.GetIntValUCDI("sendCountersUCDI")}");
-                        Logger.Log($"JM185384 !!MessageIn is TX reply and Function ID 2 or 8");
-
-                        //Thread th2 = new Thread(new ThreadStart(statusMessage2.SendCountersToHost)); v2
-                        //th2.Start(); v2
-                    }
-                    // Call Thread 
-                    //statusMessage2.SendCountersToHost();
-                    /*                   Thread thread = new Thread(() => statusMessage.SendCountersToHost(sCounters));
-                                       thread.Start();
-                                       thread.Join();
-                    */
-                    /*
-                                        Thread th2 = new Thread(new ThreadStart(statusMessage.SendCountersToHost(sCounters)));
-                                        th2.Start();
-                    */
-                    return true;
-                }
-               if (arr.Length > 0 && arr[0].Equals("22") && arr[3].Equals("B")) 
-                {
-                    Logger.Log("JM185384  - Ready B Message captured");
+                    Logger.Log("JM185384  - Supervisor Entry Detected");
                     // Logger.Log("Message is Send Configuration Information - Send hardware configuration data only");
 
-                     if (AddCountersToReady(ref arr))
+                     if (ReadCountersFile(ref arr))
                      {
                          message = ReassembleMessage(arr); 
 
@@ -202,19 +117,19 @@ namespace ByPass
                      }
                     
                 }
-                if (arr.Length > 4 && arr[0].Equals("22") && arr[3].Equals("F") && arr[4].StartsWith("2"))
+                if (arr.Length > 0 && arr[0].Equals("12") && arr[3].Equals("P20"))
                 {
-                    Logger.Log("Send Configuration Information - Send supplies data only");
+                    Logger.Log("JM185384  - Supervisor Exit Detected");
+                    // Logger.Log("Message is Send Configuration Information - Send hardware configuration data only");
 
-                     if (ChangeSuppliesData(ref arr))
-                     {
-                         message = ReassembleMessage(arr);
+                    if (WriteCountersFile(ref arr))
+                    {
+                        statusMessage.send();
 
-                         return true;
-                     }
-                    
+                        return true;
+                    }
+
                 }
-
                 if (arr.Length > 4 && arr[0].Equals("22") && arr[3].Equals("F") && arr[4].StartsWith("IA"))
                 {
                    /* Logger.Log("Send Configuration Information - Send supplies data only");
@@ -284,108 +199,192 @@ namespace ByPass
 
             return message;
         }
-        private static bool AddCountersToReady(ref string[] arr)
+        private static bool WriteCountersFile(ref string[] arr)
         {
+            int idNotesInType1 = 0;
+            int idNotesInType2 = 0;
+            int idNotesInType3 = 0;
+            int idNotesInType4 = 0;
+            
+            List<CassetteType> Lista = new List<CassetteType>();
+            List<CassetteType> Lista2 = new List<CassetteType>();
+            CassetteType type1, type2, type3, type4;
+
+            
             if (arr == null)
                 return false;
-
-            var index = 0;
-            
             for (int i = 0; i < arr.Length; i++)
             {
-                /*if (!string.IsNullOrEmpty(arr[i]) && arr[i].StartsWith("w"))
+                Logger.Log($"WriteCountersFile Data index : {arr[i]}");
+                //Logger.Log($"AddCountersToReady sendCountersUCDI : {NDCMessage.GetIntValUCDI("sendCountersUCDI")}");
+
+                if (arr[i] == "P21")
                 {
-                    index = i;
+                    Logger.Log($"185384 - > WriteCountersFile -> P21");
 
-                    break;
-                }*/
-                Logger.Log($"AddCountersToReady Data index : {arr[i]}");
-                Logger.Log($"AddCountersToReady sendCountersUCDI : {NDCMessage.GetIntValUCDI("sendCountersUCDI")}");
+                    try
+                    {
+                        /*Capture Data from Buffers*/
+                        idNotesInType1 = NDCMessage.GetIntVal(3095);
+                        idNotesInType2 = NDCMessage.GetIntVal(3096);
+                        idNotesInType3 = NDCMessage.GetIntVal(3097);
+                        idNotesInType4 = NDCMessage.GetIntVal(3098);
+                       
+                        type1 = new CassetteType();
+                        type1.Type = "1";
+                        type1.NotesIn = idNotesInType1.ToString();
 
-                if (arr[i] == "B" && NDCMessage.GetIntValUCDI("sendCountersUCDI") == 1)
-                {
-                    Logger.Log($"185384 - > Ready B - TXReply and Function ID 2 detected");
-                    int idNotesDispType1 = NDCMessage.GetIntVal(3091);
-                    int idNotesDispType2 = NDCMessage.GetIntVal(3092);
-                    int idNotesDispType3 = NDCMessage.GetIntVal(3093);
-                    int idNotesDispType4 = NDCMessage.GetIntVal(3094);
+                        type2 = new CassetteType();
+                        type2.Type = "2";
+                        type2.NotesIn = idNotesInType2.ToString();
 
-                    Logger.Log($"JM185384 Notes Cassette Type 1 Before ckeck :  {NDCMessage.GetIntVal(3095).ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Cassette Type 2 Before ckeck :  {NDCMessage.GetIntVal(3096).ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Cassette Type 3 Before ckeck :  {NDCMessage.GetIntVal(3097).ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Cassette Type 4 Before ckeck :  {NDCMessage.GetIntVal(3098).ToString("D5")}");
+                        type3 = new CassetteType();
+                        type3.Type = "3";
+                        type3.NotesIn = idNotesInType3.ToString();
 
-                    //strCountersType.Substring(12, 5) == "65535" ? "00000" : strCountersType.Substring(12, 5);
-                    int idNotesInType1 = NDCMessage.GetIntVal(3095) == 65535 ? 0 : NDCMessage.GetIntVal(3095);
-                    //int idNotesInType1 = NDCMessage.GetIntVal(3095);
-                    int idNotesInType2 = NDCMessage.GetIntVal(3096) == 65535 ? 0 : NDCMessage.GetIntVal(3096);
-                   // int idNotesInType2 = NDCMessage.GetIntVal(3096);
-                    int idNotesInType3 = NDCMessage.GetIntVal(3097) == 65535 ? 0 : NDCMessage.GetIntVal(3097);
-                    // int idNotesInType3 = NDCMessage.GetIntVal(3097);
-                    //int idNotesInType4 = NDCMessage.GetIntVal(3098);
-                    int idNotesInType4 = NDCMessage.GetIntVal(3098) == 65535 ? 0 : NDCMessage.GetIntVal(3098);
+                        type4 = new CassetteType();
+                        type4.Type = "4";
+                        type4.NotesIn = idNotesInType4.ToString();
 
-                    int idNotesPurgedType1 = NDCMessage.GetIntVal(3099);
-                    int idNotesPurgedType2 = NDCMessage.GetIntVal(3100);
-                    int idNotesPurgedType3 = NDCMessage.GetIntVal(3101);
-                    int idNotesPurgedType4 = NDCMessage.GetIntVal(3102);
+                        Lista.Add(type1);
+                        Lista.Add(type2);
+                        Lista.Add(type3);
+                        Lista.Add(type4);
 
-                    // BNA Counters
+                        Config.WriteTextFile(Lista);
 
-                    int idCass1CountDenom1 = NDCMessage.GetIntVal(3501);
-                    int idCass1CountDenom2 = NDCMessage.GetIntVal(3502);
-                    int idCass1CountDenom3 = NDCMessage.GetIntVal(3503);
-                    int idCass1CountDenom4 = NDCMessage.GetIntVal(3504);
-                    int idCass1CountDenom5 = NDCMessage.GetIntVal(3505);
-                    int idCass1CountDenom6 = NDCMessage.GetIntVal(3506);
-                    int idCass1CountDenom7 = NDCMessage.GetIntVal(3507);
-                    int idCass1CountDenom8 = NDCMessage.GetIntVal(3508);
-                    int idCass1CountDenom9 = NDCMessage.GetIntVal(3509);
-                    int idCass1CountDenom10 = NDCMessage.GetIntVal(3510);
-                    int idCass1CountDenom11 = NDCMessage.GetIntVal(3511);
+                    }
+                    catch (Exception exception)
+                    {
 
-                    // 65565
+                        Logger.Log($"Exception : {exception.ToString()}");
+                    }
 
-
-
-
-                    Logger.Log($"JM185384 Notes Dispensed Type 1 :  {idNotesDispType1.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Dispensed Type 2 :  {idNotesDispType2.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Dispensed Type 3 :  {idNotesDispType3.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Dispensed Type 4 :  {idNotesDispType4.ToString("D5")}");
-
-                    Logger.Log($"JM185384 Notes Cassette Type 1 :  {idNotesInType1.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Cassette Type 2 :  {idNotesInType2.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Cassette Type 3 :  {idNotesInType3.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Cassette Type 4 :  {idNotesInType4.ToString("D5")}");
-
-                    Logger.Log($"JM185384 Notes Rejected Type 1 :  {idNotesPurgedType1.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Rejected Type 2 :  {idNotesPurgedType2.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Rejected Type 3 :  {idNotesPurgedType3.ToString("D5")}");
-                    Logger.Log($"JM185384 Notes Rejected Type 4 :  {idNotesPurgedType4.ToString("D5")}");
-
-                   /* Logger.Log($"JM185384 BNA Cassette 1 Den  1   :  {idCass1CountDenom1.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  2   :  {idCass1CountDenom2.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  3   :  {idCass1CountDenom3.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  4   :  {idCass1CountDenom4.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  5   :  {idCass1CountDenom5.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  6   :  {idCass1CountDenom6.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  7   :  {idCass1CountDenom7.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  8   :  {idCass1CountDenom8.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  9   :  {idCass1CountDenom9.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  10  :  {idCass1CountDenom10.ToString("D4")}");
-                    Logger.Log($"JM185384 BNA Cassette 1 Den  11  :  {idCass1CountDenom11.ToString("D4")}");
-                   */
-
-                    arr[i] += (char)NDCMessage.FS + idNotesDispType1.ToString("D5") + idNotesDispType2.ToString("D5") + idNotesDispType3.ToString("D5") + idNotesDispType4.ToString("D5") + idNotesInType1.ToString("D5") + idNotesInType2.ToString("D5") + idNotesInType3.ToString("D5") + idNotesInType4.ToString("D5") + idNotesPurgedType1.ToString("D5") + idNotesPurgedType2.ToString("D5") + idNotesPurgedType3.ToString("D5") + idNotesPurgedType4.ToString("D5");
-
-
-                    //arr[i] += (char)NDCMessage.FS + "0000000100020003";
-                    NDCMessage.PutIntValUCDI("sendCountersUCDI", 0);
+                    //NDCMessage.PutIntValUCDI("sendCountersUCDI", 0);
                 }
             }
 
             return true;
+        }
+
+        private static bool ReadCountersFile(ref string[] arr)
+        {
+            int idNotesInType1 = 0;
+            int idNotesInType2 = 0;
+            int idNotesInType3 = 0;
+            int idNotesInType4 = 0;
+            bool resp = true;
+            List<CassetteType> Lista = new List<CassetteType>();
+
+
+            if (arr == null)
+                return false;
+            for (int i = 0; i < arr.Length; i++)
+            {
+                Logger.Log($"ReadCountersFile Data index : {arr[i]}");
+                //Logger.Log($"AddCountersToReady sendCountersUCDI : {NDCMessage.GetIntValUCDI("sendCountersUCDI")}");
+
+                if (arr[i] == "P20")
+                {
+                    Logger.Log($"185384 - > ReadCountersFile");
+
+                    try
+                    {
+                        /*Capture Data from Buffers*/
+                         idNotesInType1 = NDCMessage.GetIntVal(3095);
+                         idNotesInType2 = NDCMessage.GetIntVal(3096);
+                         idNotesInType3 = NDCMessage.GetIntVal(3097);
+                         idNotesInType4 = NDCMessage.GetIntVal(3098);
+
+                        /*  idNotesInType1 = 10;
+                          idNotesInType2 = 20;
+                          idNotesInType3 = 30;
+                          idNotesInType4 = 40;
+                        */
+
+                        Lista = Config.ReadTextFile();
+                        foreach (var item in Lista)
+                        {
+                            switch (item.Type)
+                            {
+                                case "1":
+                                    if (item.NotesIn.Trim() != idNotesInType1.ToString().Trim())
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type1 NOK");
+                                        resp= false;
+                                    }
+                                    else
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type1 OK");
+                                    }
+                                    break;
+                                case "2":
+                                    if (item.NotesIn.Trim() != idNotesInType2.ToString().Trim())
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type2 NOK");
+                                        resp = false;
+                                    }
+                                    else
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type2 OK");
+                                    }
+                                    break;
+                                case "3":
+                                    if (item.NotesIn.Trim() != idNotesInType3.ToString().Trim())
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type3 NOK");
+                                        resp = false;
+                                    }
+                                    else
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type3 OK");
+                                    }
+                                    break;
+                                case "4":
+                                    if (item.NotesIn.Trim() != idNotesInType4.ToString().Trim())
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type4 NOK");
+                                        resp = false;
+                                    }
+                                    else
+                                    {
+                                        Logger.Log($"185384 - > ReadCountersFile -> Type4 OK");
+                                    }
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                        
+                        
+                    }
+                    catch (Exception exception)
+                    {
+
+                        Logger.Log($"Exception : {exception.ToString()}");
+                    }
+
+                }
+            }
+            if (resp == true)
+            {
+                int retorno = Config.DeleteFile();
+                if (retorno == 1)
+                {
+                    Logger.Log($"185384 - > ReadCountersFile -> Delete Temp File");
+                    return true;
+                }
+                else
+                {
+                    Logger.Log($"185384 - > ReadCountersFile -> Delete Temp File NOK");
+                    return false;
+                }
+            }
+            else
+            {
+                    return false;
+            }
+            
         }
         private static bool ChangeStateData(ref string s)
         {
@@ -636,68 +635,9 @@ namespace ByPass
             if (string.IsNullOrEmpty(arr?[4]))
                 return false;
 
-            return ChangeSuppliesCounters(ref arr[4]);
-            //return AddOrRemoveDevices(ref arr[4], "IA", "w");
+            return AddOrRemoveDevices(ref arr[4], "IA", "w");
         }
 
-        private static bool ChangeSuppliesCounters(ref string countersType)
-        {
-            /* int idNotesInType1 = NDCMessage.GetIntVal(3095);
-             int idNotesInType2 = NDCMessage.GetIntVal(3096);
-             int idNotesInType3 = NDCMessage.GetIntVal(3097);
-             int idNotesInType4 = NDCMessage.GetIntVal(3098);
-             IntPtr handle = new IntPtr(Convert.ToInt32("2", 16));
-             try
-             {
-                 Logger.Log($"JM185384 -> Current Counters type 1 {idNotesInType1.ToString("D5")}");
-               //  NDCMessage.PutStringVal(3095, handle);
-                 NDCMessage.PutIntVal(3095,20);
-                 Logger.Log($"JM185384 -> Changing Counters type 1 to 20");
-             }
-             catch (Exception ex)
-             {
-
-                 Logger.Log($"ERROR : {ex.Message.ToString()}");
-             }
-            */
-            if (string.IsNullOrEmpty(countersType))
-                return false;
-            string strCountersType = countersType;
-            string[] ArraystrCounters = new string[23];
-            ArraystrCounters[0] = strCountersType.Substring(0, 1);
-            ArraystrCounters[1] = strCountersType.Substring(1, 4);
-            ArraystrCounters[2] = strCountersType.Substring(5, 7);
-            //Contadores disponibles
-            ArraystrCounters[3] = strCountersType.Substring(12, 5) == "65535" ? "00000" : strCountersType.Substring(12, 5);
-            ArraystrCounters[4] = strCountersType.Substring(17, 5) == "65535" ? "00000" : strCountersType.Substring(17, 5);
-            ArraystrCounters[5] = strCountersType.Substring(22, 5) == "65535" ? "00000" : strCountersType.Substring(22, 5);
-            ArraystrCounters[6] = strCountersType.Substring(27, 5) == "65535" ? "00000" : strCountersType.Substring(27, 5);
-            //Contadores rejectados
-            ArraystrCounters[7] = strCountersType.Substring(32, 5);
-            ArraystrCounters[8] = strCountersType.Substring(37, 5);
-            ArraystrCounters[9] = strCountersType.Substring(42, 5);
-            ArraystrCounters[10] = strCountersType.Substring(47, 5);
-            //contadores dispensados
-            ArraystrCounters[11] = strCountersType.Substring(52, 5);
-            ArraystrCounters[12] = strCountersType.Substring(57, 5);
-            ArraystrCounters[13] = strCountersType.Substring(62, 5);
-            ArraystrCounters[14] = strCountersType.Substring(67, 5);
-            //Last tx dispensed
-            ArraystrCounters[15] = strCountersType.Substring(72, 5);
-            ArraystrCounters[16] = strCountersType.Substring(77, 5);
-            ArraystrCounters[17] = strCountersType.Substring(82, 5);
-            ArraystrCounters[18] = strCountersType.Substring(87, 5);
-            //Card captured
-            ArraystrCounters[19] = strCountersType.Substring(92, 5);
-            //Envelopes Deposited
-            ArraystrCounters[20] = strCountersType.Substring(97, 5);
-            //Camera Film Remaining
-            ArraystrCounters[21] = strCountersType.Substring(102, 5);
-            //Last Envelope Serial Number
-            ArraystrCounters[22] = strCountersType.Substring(107, 5);
-            countersType = String.Join("", ArraystrCounters);
-            return true;
-        }
         private static bool ChangeUnsolicitedFitnessData(ref string[] arr)
         {
             if (string.IsNullOrEmpty(arr?[4]))
@@ -896,6 +836,62 @@ namespace ByPass
             }
 
             return newValue.Replace("?", "");
+        }
+        private static List<CassetteType> readAndWriteXML(List<CassetteType> ListaType)
+        {
+            XmlDocument xmldoc = new XmlDocument();
+            xmldoc = Config.ReadXMLDocument();
+
+            List<CassetteType> CassetteTypeLista = new List<CassetteType>();
+
+            XmlNodeList CassetteTypeList = xmldoc.SelectNodes("root/row");
+            foreach (XmlNode TypeNode in CassetteTypeList)
+            {
+                CassetteType _CassetteType = new CassetteType();
+                foreach (XmlNode varElement in TypeNode.ChildNodes)
+                {
+                    if (ListaType.Count == 0)
+                    {
+
+                       switch (varElement.Attributes["name"].Value)
+                        {
+                            case "Cassette":
+                                _CassetteType.Type = varElement.Attributes["value"].Value;
+                                break;
+                            case "NotesIn":
+                                _CassetteType.NotesIn = varElement.Attributes["value"].Value;
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        //var resultado = ListaType.Where(x=>x.Type == )
+                        switch (varElement.Attributes["name"].Value)
+                        {
+                            case "Cassette":
+                                var resultado = ListaType.Where(x => x.Type == varElement.Attributes["value"].Value);
+                                foreach(var item in resultado)
+                                {
+                                    varElement.Attributes["value"].Value = item.Type;
+                                }
+                                break;
+                            case "NotesIn":
+                                var resultado2 = ListaType.Where(x => x.Type == varElement.Attributes["value"].Value);
+                                foreach (var item in resultado2)
+                                {
+                                    varElement.Attributes["value"].Value = item.NotesIn;
+                                }
+                               
+                                break;
+                        }
+                    }
+                }
+                xmldoc.Save(Config.CONFIG_FILE_NAME);
+                CassetteTypeLista.Add(_CassetteType);
+
+            }
+
+            return CassetteTypeLista;
         }
     }
 }
